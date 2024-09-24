@@ -1,0 +1,37 @@
+<form [formGroup]="form" (reset)="onReset($event)" (ngSubmit)="onSubmit($event)" class="form">
+  <h1>Simple implementation</h1>
+  <div class="form-field">
+    <label for="email">Email</label>
+    <input formControlName="email" type="email" id="email" placeholder="Enter your email">
+    @if (form.controls.email) {
+      <div class="input-error" *ngIf="form.controls.email.dirty && form.controls.email.hasError('required')">This field is required</div>
+      <div class="input-error" *ngIf="form.controls.email.dirty && form.controls.email.hasError('email')">The email is not valid</div>
+    }
+  </div>
+  <fieldset formGroupName="password">
+    <legend>Password</legend>
+    <div class="form-field">
+      <label for="password">Create Password</label>
+      <input formControlName="password" type="password" id="password" placeholder="Enter password...">
+      @let password = form.controls.password.controls.password;
+      @if (password.dirty && password.hasError('required')) {
+        <div class="input-error">This field is required</div>
+      }
+      @if (password.dirty && password.hasError('minlength')) {
+        <div class="input-error">
+          Password should be at least <strong>{{password.getError('minlength').requiredLength}}</strong> characters
+        </div>
+      }
+    </div>
+    <div class="form-field">
+      <label for="confirm-password">Confirm Password</label>
+      <input formControlName="confirmPassword" type="password" id="confirm-password" placeholder="Enter password...">
+      @let confirmPassword = form.controls.password.controls.confirmPassword;
+      @if (confirmPassword.hasError('passShouldMatch') && confirmPassword.dirty) {
+        <div class="input-error">Password doesn't match</div>
+      }
+    </div>
+  </fieldset>
+  <button [disabled]="form.invalid">Signup</button>
+  <button class="reset-button" type="reset" [disabled]="form.pristine">Reset</button>
+</form>
