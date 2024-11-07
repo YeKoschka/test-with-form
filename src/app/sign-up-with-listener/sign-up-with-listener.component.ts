@@ -1,8 +1,7 @@
-import { AfterViewInit, Component, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, NgForm, NgModel } from '@angular/forms';
-import { UserInfo } from '../interfaces/user-info';
-import { combineLatest, filter, switchMap, tap } from 'rxjs';
+import { FormsModule, ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { catchError, combineLatest, map, of, startWith, tap } from 'rxjs';
 
 
 @Component({
@@ -12,89 +11,104 @@ import { combineLatest, filter, switchMap, tap } from 'rxjs';
   templateUrl: './sign-up-with-listener.component.html',
   styleUrl: './sign-up-with-listener.component.scss'
 })
-export class SignUpWithListenerComponent implements AfterViewInit {
-  private initialValue: unknown;
-  isValid = false;
+export class SignUpWithListenerComponent {
+  signupForm: FormGroup;
+  emailError: string = '';
+  passwordError: string = '';
+  confirmPasswordError: string = '';
+  commonError: string = '';
+  formValid$: any;
+  isFormValid$: any;
 
-
-  public userInfo: UserInfo = {
-    email: '',
-    password: '',
-    confirmPassword: ''
+  constructor() {
+    this.signupForm = new FormGroup({
+      email: new FormControl(''),
+      password: new FormControl(''),
+      confirmPassword: new FormControl('')
+    });
   }
 
-  @ViewChild('email')
-  email?: NgModel;
+  ngOnInit(): void {
+    const email$ = this.signupForm.get('email')!.valueChanges.pipe(
+      startWith(''),
+      map(value => value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) ? '' : 'Invalid email format')
+    );
 
-  @ViewChild('pass')
-  password?: NgModel;
+    const password$ = this.signupForm.get('password')!.valueChanges.pipe(
+      startWith(''),
+      map(value => value.length >= 6 ? '' : 'Password must be at least 6 characters')
+    );
 
-  @ViewChild('confirmPass')
-  confirmPass?: NgModel;
+    const confirmPassword$ = combineLatest([
+      this.signupForm.get('password')!.valueChanges.pipe(startWith('')),
+      this.signupForm.get('confirmPassword')!.valueChanges.pipe(startWith(''))
+    ]).pipe(
+      map(([password, confirmPassword]) => password === confirmPassword ? '' : 'Passwords do not match')
+    );
 
-  @ViewChild(NgForm)
-  formDir!: NgForm;
-
-  constructor(
-
-  ) { }
-
-  ngAfterViewInit(): void {
-
-      const email$ = this.email?.valueChanges?.pipe(
-        tap((res) => {
-          const email = this.formDir.getControl(this.email as NgModel);
-
-          if(!res) email?.setErrors({ required: true });
-          if(res && !res.match(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/)) {
-            email.setErrors({ email: { mismatch: true } });
+    this.formValid$ = combineLatest([email$, password$, confirmPassword$]).pipe(
+      tap(([emailError, passwordError, confirmPasswordError]) => {
+        setTimeout(() => {
+          this.emailError = emailError;
+          if (emailError) {
+            this.signupForm.controls.email.setErrors({ email: { mismatch: true } });
+          }
+          this.passwordError = passwordError;
+          if (passwordError) {
+            this.signupForm.controls.password.setErrors({ password: { minLength: true } });
+          }
+          this.confirmPasswordError = confirmPasswordError;
+          if (confirmPasswordError) {
+            this.signupForm.controls.confirmPassword.setErrors({ confirmPassword: { mismatch: true } });
           }
         })
+      }),
+      map(([emailError, passwordError, confirmPasswordError]) =>
+        !emailError && !passwordError && !confirmPasswordError
       )
+    );
 
-      const password$ = this.password?.valueChanges?.pipe(
-        tap((res) => {
-          const pass = this.formDir.getControl(this.password as NgModel);
-
-          if(!res) pass?.setErrors({ required: true });
-          if(res && res.length < 6) pass?.setErrors({minLength: true});
-        })
+    this.isFormValid$ = combineLatest([
+      this.formValid$,
+      this.signupForm.statusChanges.pipe(
+        map(() => this.signupForm.touched),
+        startWith(false)
       )
+    ]).pipe(
+      map(([formValid]) => {
+        console.log(formValid)
+        return formValid
+      }),
+      map(([formValid, formTouched]) => formValid && formTouched)
+    );
+  }
 
-      const confirmPass$ = this.confirmPass?.valueChanges?.pipe(
-        tap((res) => {
-          const pass = this.formDir.getControl(this.password as NgModel);
-          const confirmPassword = this.formDir.getControl(this.confirmPass as NgModel);
-          const errors = { passShouldMatch: { mismatch: true } };
-          if(!res) confirmPassword?.setErrors({ required: true });
 
-          if (pass?.value !== confirmPassword?.value) {
-            confirmPassword?.setErrors(errors);
-          }
-        })
-      );
+  onSubmit() {
+    if (this.signupForm.valid) {
+      this.simulateNetworkRequest(this.signupForm.value)
+        .pipe(
+          catchError(error => {
+            this.commonError = 'An error occurred during signup. Please try again.';
+            return of(null);
+          })
+        )
+        .subscribe();
+    }
+  }
 
-      const example = combineLatest([email$, password$, confirmPass$])
+  onReset() {
+    this.signupForm.reset();
+  }
 
-      example.pipe(
-        switchMap(() => {
-          console.log(this.formDir.valid);
-          return this.formDir.statusChanges! ;
-        }),
-        filter(res => res !== 'INVALID')
-      ).subscribe((res) => {
-        this.isValid = true;
+  private simulateNetworkRequest(formData: any) {
+    console.log('Simulating network request with data:', formData);
+    return of({ success: true }).pipe(
+      tap(() => {
+        alert('Signup successful!');
+        this.onReset();
       })
-  }
-
-  onSubmit(e: Event) {
-    // server sending logic
-    this.formDir.resetForm(this.initialValue);
-  }
-  onReset(e: Event) {
-    e.preventDefault();
-    this.formDir.resetForm(this.initialValue);
-    this.isValid = false;
+    );
   }
 
 }

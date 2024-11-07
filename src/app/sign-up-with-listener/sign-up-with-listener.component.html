@@ -1,61 +1,32 @@
-<form #form="ngForm" (reset)="onReset($event)" (ngSubmit)="onSubmit($event)" class="form">
+<form [formGroup]="signupForm" (reset)="onReset()" (ngSubmit)="onSubmit()" class="form">
   <h1>Implementation with rxjs</h1>
   <div class="form-field">
     <label for="email-test">Email</label>
-    <input
-      [(ngModel)]="userInfo.email"
-      name="email"
-      #email="ngModel"
-      type="email"
-      id="email-test"
-      placeholder="Enter your email">
-
-    @if (email.dirty && email.hasError('required')) {
-      <div class="input-error">This field is required</div>
-    }
+    <input formControlName="email" type="email" id="email-test" placeholder="Enter your email">
+    @let email = signupForm.controls.email;
     @if (email.dirty && email.hasError('email')) {
-      <div class="input-error">The email is not valid</div>
+    <div class="input-error">The email is not valid</div>
     }
   </div>
-  <fieldset ngModelGroup="password">
-    <legend>Password</legend>
-    <div class="form-field">
-      <label for="pass">Create Password</label>
-      <input
-        [(ngModel)]="userInfo.password"
-        #pass="ngModel"
-        type="text"
-        id="pass"
-        name="pass"
-        placeholder="Enter password...">
-      @if (pass.dirty && pass.hasError('required')) {
-        <div class="input-error">This field is required</div>
-      }
-      @if (pass.dirty && pass.hasError('minlength')) {
-        <div class="input-error">
-          Password should be at least <strong>6</strong> characters
-        </div>
-      }
+  <div class="form-field">
+    <label for="pass">Create Password</label>
+    <input formControlName="password" type="password" placeholder="Enter password...">
+    @let password = signupForm.controls.password;
+    @if (password.dirty && password.hasError('password')) {
+    <div class="input-error">
+      {{passwordError}}
     </div>
-    <div class="form-field">
-      <label for="confirm-pass">Confirm Password</label>
-      <input
-        [(ngModel)]="userInfo.confirmPassword"
-        #confirmPass="ngModel"
-        name="confirm-pass"
-        type="text"
-        id="confirm-pass"
-        placeholder="Enter password...">
-      @if (confirmPass.hasError('passShouldMatch') && confirmPass.dirty) {
-        <div class="input-error">Password doesn't match</div>
-      }
-      @if (confirmPass.dirty && confirmPass.hasError('minlength')) {
-        <div class="input-error">
-          Password should be at least <strong>6</strong> characters
-        </div>
-      }
-    </div>
-  </fieldset>
-  <button [disabled]="!isValid">Signup</button>
-  <button class="reset-button" type="reset" [disabled]="form.pristine">Reset</button>
+    }
+  </div>
+  <div class="form-field">
+    <label for="confirm-pass">Confirm Password</label>
+    <input formControlName="confirmPassword" type="password" placeholder="Enter password again...">
+    @let confirmPassword = signupForm.controls.confirmPassword;
+    @if (confirmPassword.hasError('confirmPassword') && confirmPassword.dirty) {
+    <div class="input-error">{{confirmPasswordError}}</div>
+    }
+  </div>
+  <button type="submit" [disabled]="!(signupForm.touched && formValid$ | async)">Signup</button>
+  <button class="reset-button" type="reset" [disabled]="signupForm.pristine">Reset</button>
 </form>
+
